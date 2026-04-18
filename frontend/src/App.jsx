@@ -80,7 +80,7 @@ function ChatApp({ currentUser, setCurrentUser }) {
         };
     }, [currentUser]);
 
-    // Fetch messages when activeChat changes
+    // Fetch messages when activeChat changes or periodically
     useEffect(() => {
         if (!activeChat) return;
 
@@ -96,6 +96,8 @@ function ChatApp({ currentUser, setCurrentUser }) {
         };
 
         fetchMessages();
+        const interval = setInterval(fetchMessages, 15000);
+        return () => clearInterval(interval);
     }, [activeChat, currentUser]);
 
     // Filter messages to only show those for the active chat
@@ -104,7 +106,7 @@ function ChatApp({ currentUser, setCurrentUser }) {
         (m.senderId === activeChat?.username && m.recipientId === currentUser.username)
     );
 
-    const handleSendMessage = (content, messageType = 'TEXT', mediaUrl = null) => {
+    const handleSendMessage = (content, messageType = 'TEXT', mediaUrl = null, disappears = false) => {
         if (!activeChat || !stompClient.current) return;
 
         const chatMessage = {
@@ -114,6 +116,7 @@ function ChatApp({ currentUser, setCurrentUser }) {
             messageType: messageType,
             mediaUrl: mediaUrl,
             status: 'DELIVERED',
+            disappears: disappears
         };
 
         stompClient.current.publish({

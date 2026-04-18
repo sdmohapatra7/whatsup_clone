@@ -29,6 +29,12 @@ public class ChatController {
     @MessageMapping("/chat")
     public void processMessage(@Payload ChatMessage chatMessage) {
         chatMessage.setTimestamp(LocalDateTime.now());
+        
+        if (Boolean.TRUE.equals(chatMessage.getDisappears())) {
+            // Set message to expire in 24 hours (or 1 minute for quick testing if you prefer)
+            chatMessage.setExpiresAt(LocalDateTime.now().plusHours(24));
+        }
+
         ChatMessage savedMsg = chatMessageRepository.save(chatMessage);
 
         // Broadcasts to the specific user's queue: /user/{recipientId}/queue/messages
@@ -48,10 +54,13 @@ public class ChatController {
         allMessages.addAll(aToB);
         allMessages.addAll(bToA);
 
-        // Sort by timestamp
-        allMessages.sort(Comparator.comparing(ChatMessage::getTimestamp));
+        // Sort by timestamp and filter out expired ones
+        List<ChatMessage> result = allMessages.stream()
+            .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(LocalDateTime.now()))
+            .sorted(Comparator.comparing(ChatMessage::getTimestamp))
+            .toList();
 
-        return ResponseEntity.ok(allMessages);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/api/messages/recent/{userId}")
@@ -77,8 +86,10 @@ public class ChatController {
             }
         }
 
-        List<ChatMessage> result = new ArrayList<>(recentMessages.values());
-        result.sort(Comparator.comparing(ChatMessage::getTimestamp).reversed());
+        List<ChatMessage> result = recentMessages.values().stream()
+                .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(LocalDateTime.now()))
+                .sorted(Comparator.comparing(ChatMessage::getTimestamp).reversed())
+                .toList();
 
         return ResponseEntity.ok(result);
     }

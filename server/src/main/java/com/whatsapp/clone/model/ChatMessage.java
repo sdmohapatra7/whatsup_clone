@@ -24,6 +24,8 @@ public class ChatMessage {
     private MessageType messageType;
     private LocalDateTime timestamp;
     private MessageStatus status;
+    private Boolean disappears;
+    private LocalDateTime expiresAt;
 }
 
 enum MessageStatus {

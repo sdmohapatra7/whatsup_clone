@@ -5,6 +5,7 @@ export default function ChatWindow({ currentUser, activeChat, messages, onSendMe
     const [inputMessage, setInputMessage] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isDisappearingEnabled, setIsDisappearingEnabled] = useState(false);
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
 
@@ -15,7 +16,7 @@ export default function ChatWindow({ currentUser, activeChat, messages, onSendMe
     const handleSend = (e) => {
         e.preventDefault();
         if (inputMessage.trim()) {
-            onSendMessage(inputMessage, 'TEXT', null);
+            onSendMessage(inputMessage, 'TEXT', null, isDisappearingEnabled);
             setInputMessage('');
             setShowEmojiPicker(false);
         }
@@ -45,7 +46,7 @@ export default function ChatWindow({ currentUser, activeChat, messages, onSendMe
 
             if (response.ok) {
                 const data = await response.json();
-                onSendMessage(file.name, messageType, data.url);
+                onSendMessage(file.name, messageType, data.url, isDisappearingEnabled);
             }
         } catch (err) {
             console.error("Failed to upload media:", err);
@@ -84,6 +85,18 @@ export default function ChatWindow({ currentUser, activeChat, messages, onSendMe
                     <h2 className="font-semibold text-gray-800">{activeChat.fullName || activeChat.phoneNumber}</h2>
                     <p className="text-xs text-gray-600">{activeChat.status === 'ONLINE' ? 'online' : 'offline'}</p>
                 </div>
+                {/* Disappearing Messages Toggle */}
+                <button
+                    onClick={() => setIsDisappearingEnabled(!isDisappearingEnabled)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${isDisappearingEnabled ? 'bg-[#128c7e] text-white' : 'bg-gray-200 text-gray-600'
+                        }`}
+                    title="Disappearing Messages"
+                >
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                    </svg>
+                    {isDisappearingEnabled ? 'Disappearing ON' : 'Off'}
+                </button>
             </div>
 
             {/* Messages Area */}
@@ -93,25 +106,31 @@ export default function ChatWindow({ currentUser, activeChat, messages, onSendMe
                     return (
                         <div key={index} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                             <div
-                                className={`max-w-[65%] rounded-lg px-3 py-2 shadow-sm relative ${isMine ? 'bg-[#dcf8c6] rounded-tr-none' : 'bg-white rounded-tl-none'
+                                className={`max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${isMine ? 'bg-[#dcf8c6] rounded-tr-none' : 'bg-white rounded-tl-none'
                                     }`}
                             >
                                 {msg.messageType === 'IMAGE' ? (
-                                    <div className="pb-3">
+                                    <div className="space-y-1">
                                         <img src={msg.mediaUrl} alt={msg.content} className="max-w-full rounded-lg max-h-64 object-contain" />
-                                        {msg.content && <p className="text-gray-800 text-[14.2px] mt-1">{msg.content}</p>}
+                                        {msg.content && <p className="text-gray-800 text-[14.2px]">{msg.content}</p>}
                                     </div>
                                 ) : msg.messageType === 'VIDEO' ? (
-                                    <div className="pb-3">
+                                    <div className="space-y-1">
                                         <video src={msg.mediaUrl} controls className="max-w-full rounded-lg max-h-64" />
                                     </div>
                                 ) : (
-                                    <p className="text-gray-800 text-[14.2px] leading-relaxed break-words pb-3">
+                                    <p className="text-gray-800 text-[14.2px] leading-relaxed break-words">
                                         {msg.content}
                                     </p>
                                 )}
-                                <div className="absolute bottom-1 right-2 flex items-center">
-                                    <span className="text-[11px] text-gray-500">
+                                
+                                <div className="flex items-center justify-end gap-1 mt-1 -mr-1">
+                                    {msg.disappears && (
+                                        <svg viewBox="0 0 24 24" width="11" height="11" className="text-gray-400" fill="currentColor">
+                                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                        </svg>
+                                    )}
+                                    <span className="text-[10px] text-gray-500 font-medium">
                                         {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                     </span>
                                 </div>
