@@ -2,7 +2,6 @@ package com.whatsapp.clone.controller;
 
 import com.whatsapp.clone.model.ChatMessage;
 import com.whatsapp.clone.repository.ChatMessageRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -12,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.http.ResponseEntity;
 
+import com.whatsapp.clone.model.MessageStatus;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -20,26 +20,71 @@ import java.util.List;
 import java.util.Map;
 
 @Controller
-@RequiredArgsConstructor
 public class ChatController {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatMessageRepository chatMessageRepository;
 
+    public ChatController(SimpMessagingTemplate messagingTemplate, ChatMessageRepository chatMessageRepository) {
+        this.messagingTemplate = messagingTemplate;
+        this.chatMessageRepository = chatMessageRepository;
+    }
+
     @MessageMapping("/chat")
     public void processMessage(@Payload ChatMessage chatMessage) {
         chatMessage.setTimestamp(LocalDateTime.now());
+        chatMessage.setStatus(MessageStatus.DELIVERED);
         
         if (Boolean.TRUE.equals(chatMessage.getDisappears())) {
-            // Set message to expire in 24 hours (or 1 minute for quick testing if you prefer)
             chatMessage.setExpiresAt(LocalDateTime.now().plusHours(24));
         }
 
         ChatMessage savedMsg = chatMessageRepository.save(chatMessage);
 
-        // Broadcasts to the specific user's queue: /user/{recipientId}/queue/messages
-        messagingTemplate.convertAndSendToUser(
-                chatMessage.getRecipientId(), "/queue/messages", savedMsg);
+        if (chatMessage.getGroupId() != null) {
+            // Group Message: Broadcast to the group topic
+            messagingTemplate.convertAndSend("/topic/group/" + chatMessage.getGroupId(), savedMsg);
+        } else {
+            // Private Message: Broadcast to the specific user's queue
+            messagingTemplate.convertAndSendToUser(
+                    chatMessage.getRecipientId(), "/queue/messages", savedMsg);
+        }
+    }
+
+    @MessageMapping("/chat/read")
+    public void processReadReceipt(@Payload Map<String, String> payload) {
+        String senderId = payload.get("senderId"); // The person who sent the messages
+        String recipientId = payload.get("recipientId"); // The person who just read them
+
+        List<ChatMessage> unreadMessages = chatMessageRepository.findBySenderIdAndRecipientId(senderId, recipientId)
+                .stream()
+                .filter(m -> m.getStatus() != MessageStatus.READ)
+                .toList();
+
+        if (!unreadMessages.isEmpty()) {
+            unreadMessages.forEach(m -> m.setStatus(MessageStatus.READ));
+            chatMessageRepository.saveAll(unreadMessages);
+
+            // Notify the SENDER that their messages were read
+            messagingTemplate.convertAndSendToUser(
+                    senderId, "/queue/status", Map.of(
+                            "partnerId", recipientId,
+                            "status", "READ"
+                    ));
+        }
+    }
+
+    @GetMapping("/api/messages/group/{groupId}")
+    @ResponseBody
+    public ResponseEntity<List<ChatMessage>> findGroupMessages(@PathVariable("groupId") String groupId) {
+        List<ChatMessage> messages = chatMessageRepository.findByGroupId(groupId);
+        
+        List<ChatMessage> result = messages.stream()
+            .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(LocalDateTime.now()))
+            .sorted(Comparator.comparing(ChatMessage::getTimestamp))
+            .toList();
+
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/api/messages/{senderId}/{recipientId}")

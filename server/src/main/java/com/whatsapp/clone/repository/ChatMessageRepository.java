@@ -10,6 +10,8 @@ public interface ChatMessageRepository extends MongoRepository<ChatMessage, Stri
     List<ChatMessage> findBySenderIdAndRecipientId(String senderId, String recipientId);
 
     List<ChatMessage> findBySenderIdOrRecipientId(String senderId, String recipientId);
+    
+    List<ChatMessage> findByGroupId(String groupId);
 
     void deleteByExpiresAtBefore(LocalDateTime now);
 }

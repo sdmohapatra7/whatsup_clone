@@ -4,12 +4,13 @@ import com.whatsapp.clone.model.Otp;
 import com.whatsapp.clone.model.Status;
 import com.whatsapp.clone.model.User;
 import com.whatsapp.clone.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.whatsapp.clone.repository.OtpRepository;
+import com.whatsapp.clone.security.JwtTokenProvider;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 
 import java.util.List;
 import java.util.Map;
@@ -17,12 +18,19 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
-@RequiredArgsConstructor
 public class UserController {
 
     private final UserRepository userRepository;
-
     private final OtpRepository otpRepository;
+    private final JwtTokenProvider tokenProvider;
+    private final SimpMessageSendingOperations messagingTemplate;
+
+    public UserController(UserRepository userRepository, OtpRepository otpRepository, JwtTokenProvider tokenProvider, SimpMessageSendingOperations messagingTemplate) {
+        this.userRepository = userRepository;
+        this.otpRepository = otpRepository;
+        this.tokenProvider = tokenProvider;
+        this.messagingTemplate = messagingTemplate;
+    }
 
     @PostMapping("/request-otp")
     public ResponseEntity<?> requestOtp(@RequestBody Map<String, String> request) {
@@ -91,7 +99,11 @@ public class UserController {
             user.setStatus(Status.ONLINE);
             userRepository.save(user);
 
-            return ResponseEntity.ok(user);
+            String token = tokenProvider.generateToken(user.getId());
+            return ResponseEntity.ok(Map.of(
+                    "user", user,
+                    "token", token
+            ));
         }
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid OTP");
@@ -108,7 +120,12 @@ public class UserController {
             if (user.isTwoStepEnabled() && user.getTwoStepPin().equals(pin)) {
                 user.setStatus(Status.ONLINE);
                 userRepository.save(user);
-                return ResponseEntity.ok(user);
+                
+                String token = tokenProvider.generateToken(user.getId());
+                return ResponseEntity.ok(Map.of(
+                        "user", user,
+                        "token", token
+                ));
             }
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid PIN");
@@ -180,6 +197,13 @@ public class UserController {
             User user = userOpt.get();
             user.setStatus(Status.OFFLINE);
             userRepository.save(user);
+
+            // Broadcast status change
+            messagingTemplate.convertAndSend("/topic/public", Map.of(
+                    "userId", user.getId(),
+                    "status", Status.OFFLINE.toString()
+            ));
+
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();
