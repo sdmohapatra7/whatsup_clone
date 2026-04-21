@@ -1,4 +1,7 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082/api';
+let BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082/api';
+if (window.location.protocol === 'https:' && BASE_URL.startsWith('http://')) {
+    BASE_URL = BASE_URL.replace('http://', 'https://');
+}
 
 const getHeaders = () => {
     const token = localStorage.getItem('chatToken');
