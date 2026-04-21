@@ -173,6 +173,16 @@ public class UserController {
         return ResponseEntity.ok(userRepository.findAll());
     }
 
+    @PutMapping("/{id}/profile")
+    public ResponseEntity<?> updateProfile(@PathVariable("id") String id, @RequestBody Map<String, String> request) {
+        return userRepository.findById(id).map(user -> {
+            if (request.containsKey("fullName")) user.setFullName(request.get("fullName"));
+            if (request.containsKey("email")) user.setEmail(request.get("email"));
+            User saved = userRepository.save(user);
+            return ResponseEntity.ok(saved);
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping("/logout/{username}")
     public ResponseEntity<?> logoutUser(@PathVariable("username") String username) {
         Optional<User> userOpt = userRepository.findFirstByUsername(username);
