@@ -46,7 +46,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:5174")); // Vite ports
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:5173", 
+            "http://localhost:5174",
+            "https://whatsup-clone-delta.vercel.app"
+        )); // Local Vite ports + Vercel Deployment
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
         configuration.setExposedHeaders(Collections.singletonList("x-auth-token"));
