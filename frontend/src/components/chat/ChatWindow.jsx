@@ -102,6 +102,8 @@ export default function ChatWindow({ onSendMessage, onSendTyping, onSendReadRece
 
         try {
             const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082/api';
+            const serverUrl = BASE_URL.replace('/api', '');
+
             const res = await fetch(`${BASE_URL}/files/upload`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('chatToken')}` },
@@ -109,7 +111,8 @@ export default function ChatWindow({ onSendMessage, onSendTyping, onSendReadRece
             });
             if (res.ok) {
                 const data = await res.json();
-                const updated = await api.post(`/groups/${activeChat.id}`, { groupImageUrl: data.url }, 'PUT');
+                const fullUrl = `${serverUrl}${data.url}`;
+                const updated = await api.post(`/groups/${activeChat.id}`, { groupImageUrl: fullUrl }, 'PUT');
                 updateGroup(updated);
                 showToast("Group visual protocol synchronized.");
             }
@@ -178,6 +181,8 @@ export default function ChatWindow({ onSendMessage, onSendTyping, onSendReadRece
         try {
             // Using raw fetch for FormData remains okay, but we use BASE_URL logic
             const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082/api';
+            const serverUrl = BASE_URL.replace('/api', '');
+
             const res = await fetch(`${BASE_URL}/files/upload`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('chatToken')}` },
@@ -185,8 +190,9 @@ export default function ChatWindow({ onSendMessage, onSendTyping, onSendReadRece
             });
             if (res.ok) {
                 const data = await res.json();
+                const fullUrl = `${serverUrl}${data.url}`;
                 // Send specific message type for media
-                onSendMessage('', data.url, type === 'chat-image' ? 'IMAGE' : 'VIDEO');
+                onSendMessage('', fullUrl, type === 'chat-image' ? 'IMAGE' : 'VIDEO');
             }
         } catch (err) { console.error('Upload failed', err); }
         finally { setIsUploading(false); }

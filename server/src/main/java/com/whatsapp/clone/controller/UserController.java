@@ -178,6 +178,7 @@ public class UserController {
         return userRepository.findById(id).map(user -> {
             if (request.containsKey("fullName")) user.setFullName(request.get("fullName"));
             if (request.containsKey("email")) user.setEmail(request.get("email"));
+            if (request.containsKey("profileImageUrl")) user.setProfileImageUrl(request.get("profileImageUrl"));
             User saved = userRepository.save(user);
             return ResponseEntity.ok(saved);
         }).orElse(ResponseEntity.notFound().build());
