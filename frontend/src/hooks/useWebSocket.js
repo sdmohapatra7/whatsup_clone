@@ -9,8 +9,9 @@ import useChatStore from '../store/useChatStore';
  * and Optimistic Synchronization logic.
  */
 export default function useWebSocket() {
-    const { currentUser, activeChat, addMessageOptimistically, setMessages, unreadCounts, setUnreadCount, setRecentMessages } = useChatStore();
+    const { currentUser, activeChat, addMessageOptimistically, setMessages, unreadCounts, setUnreadCount, setRecentMessages, setTyping } = useChatStore();
     const stompClient = useRef(null);
+    const typingSubscriptions = useRef({}); // { chatId: subscription }
 
     const connect = useCallback(() => {
         if (!currentUser) return;
@@ -30,9 +31,10 @@ export default function useWebSocket() {
                     handleIncomingMessage(newMsg);
                 });
 
-                // 2. Subscribe to Public Status (ONLINE/OFFLINE)
-                client.subscribe('/topic/public', (msg) => {
-                    // Update user status in state if needed
+                // 3. Subscribe to Typing (Personal)
+                client.subscribe(`/user/${currentUser.username}/queue/typing`, (msg) => {
+                    const data = JSON.parse(msg.body);
+                    setTyping(data.userId, data.userId, data.isTyping);
                 });
             }
         });
@@ -63,6 +65,20 @@ export default function useWebSocket() {
         return () => stompClient.current?.deactivate();
     }, [connect]);
 
+    // Handle Group Typing Subscription
+    useEffect(() => {
+        if (stompClient.current?.active && activeChat?.isGroup) {
+            const topic = `/topic/group/${activeChat.id}/typing`;
+            const sub = stompClient.current.subscribe(topic, (msg) => {
+                const data = JSON.parse(msg.body);
+                if (data.userId !== currentUser.username) {
+                    setTyping(activeChat.id, data.userId, data.isTyping);
+                }
+            });
+            return () => sub.unsubscribe();
+        }
+    }, [activeChat, setTyping, currentUser]);
+
     /**
      * ADVANCED: Optimistic Send Logic
      */
@@ -88,5 +104,24 @@ export default function useWebSocket() {
         }
     };
 
-    return { sendMessage };
+    /**
+     * BROADCAST TYPING STATUS
+     */
+    const sendTyping = (isTyping) => {
+        if (stompClient.current?.connected && activeChat) {
+            const typingData = {
+                senderId: currentUser.username,
+                recipientId: activeChat.isGroup ? null : activeChat.username,
+                groupId: activeChat.isGroup ? activeChat.id : null,
+                isTyping
+            };
+
+            stompClient.current.publish({
+                destination: '/app/chat/typing',
+                body: JSON.stringify(typingData)
+            });
+        }
+    };
+
+    return { sendMessage, sendTyping };
 }

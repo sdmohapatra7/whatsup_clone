@@ -55,13 +55,35 @@ const MessageItem = memo(({ msg, isMine, isGroupChat }) => {
     );
 });
 
-export default function ChatWindow({ onSendMessage, onBack }) {
-    const { currentUser, activeChat, messages } = useChatStore();
+export default function ChatWindow({ onSendMessage, onSendTyping, onBack }) {
+    const { currentUser, activeChat, messages, typingUsers } = useChatStore();
     const [inputMessage, setInputMessage] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
+
+    // Typing Signal Logic
+    useEffect(() => {
+        if (!inputMessage.trim()) {
+            onSendTyping?.(false);
+            return;
+        }
+
+        onSendTyping?.(true);
+        const timeout = setTimeout(() => {
+            onSendTyping?.(false);
+        }, 3000);
+
+        return () => clearTimeout(timeout);
+    }, [inputMessage, onSendTyping]);
+
+    const activeChatId = useMemo(() => {
+        if (!activeChat) return null;
+        return activeChat.isGroup ? activeChat.id : activeChat.username;
+    }, [activeChat]);
+
+    const activeTypingUsers = typingUsers[activeChatId] || [];
 
     // Smooth Scroll Optimization
     useEffect(() => { 
@@ -69,7 +91,7 @@ export default function ChatWindow({ onSendMessage, onBack }) {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
         return () => clearTimeout(timer);
-    }, [messages]);
+    }, [messages, activeTypingUsers]);
 
     const handleSend = useCallback((e) => {
         if (e) e.preventDefault();
@@ -130,11 +152,26 @@ export default function ChatWindow({ onSendMessage, onBack }) {
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#25d366] to-[#128c7e] flex items-center justify-center text-black font-black text-xl shadow-lg border border-white/5">
                         {(activeChat.name || activeChat.fullName || activeChat.phoneNumber || 'U').charAt(0).toUpperCase()}
                     </div>
-                    <div>
+                    <div className="flex flex-col">
                         <h2 className="font-black text-gray-100 text-[15px] leading-tight tracking-tight truncate">{activeChat.name || activeChat.fullName || activeChat.phoneNumber}</h2>
-                        <div className="flex items-center mt-0.5">
-                            <span className={`w-1.5 h-1.5 rounded-full mr-2 ${activeChat.status === 'ONLINE' ? 'bg-[#25d366] shadow-[0_0_5px_#25d366]' : 'bg-gray-600'}`}></span>
-                            <span className="text-[9px] text-white/40 font-black uppercase tracking-widest">{activeChat.status === 'ONLINE' ? 'Secured' : 'Offline'}</span>
+                        <div className="flex items-center mt-0.5 h-4">
+                            {activeTypingUsers.length > 0 ? (
+                                <div className="flex items-center space-x-2 animate-entrance">
+                                    <div className="flex space-x-1">
+                                        <span className="w-1 h-1 bg-[#25d366] rounded-full animate-bounce-subtle" style={{ animationDelay: '0s' }}></span>
+                                        <span className="w-1 h-1 bg-[#25d366] rounded-full animate-bounce-subtle" style={{ animationDelay: '0.2s' }}></span>
+                                        <span className="w-1 h-1 bg-[#25d366] rounded-full animate-bounce-subtle" style={{ animationDelay: '0.4s' }}></span>
+                                    </div>
+                                    <span className="text-[10px] text-[#25d366] font-black uppercase tracking-widest leading-none">
+                                        {activeChat.isGroup ? `${activeTypingUsers[0]} is typing...` : 'typing...'}
+                                    </span>
+                                </div>
+                            ) : (
+                                <>
+                                    <span className={`w-1.5 h-1.5 rounded-full mr-2 ${activeChat.status === 'ONLINE' ? 'bg-[#25d366] shadow-[0_0_5px_#25d366]' : 'bg-gray-600'}`}></span>
+                                    <span className="text-[9px] text-white/40 font-black uppercase tracking-widest">{activeChat.status === 'ONLINE' ? 'Secured' : 'Offline'}</span>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

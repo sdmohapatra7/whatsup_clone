@@ -72,6 +72,22 @@ public class ChatController {
                             "status", "READ"
                     ));
         }
+    @MessageMapping("/chat/typing")
+    public void processTyping(@Payload Map<String, String> payload) {
+        String senderId = payload.get("senderId");
+        String recipientId = payload.get("recipientId");
+        String groupId = payload.get("groupId");
+        boolean isTyping = Boolean.parseBoolean(String.valueOf(payload.get("isTyping")));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("userId", senderId);
+        response.put("isTyping", isTyping);
+
+        if (groupId != null) {
+            messagingTemplate.convertAndSend("/topic/group/" + groupId + "/typing", response);
+        } else if (recipientId != null) {
+            messagingTemplate.convertAndSendToUser(recipientId, "/queue/typing", response);
+        }
     }
 
     @GetMapping("/api/messages/group/{groupId}")

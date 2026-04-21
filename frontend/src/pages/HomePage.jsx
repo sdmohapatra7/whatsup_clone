@@ -7,7 +7,7 @@ import { api } from '../services/api';
 
 const HomePage = () => {
     const { currentUser, setCurrentUser, activeChat, setActiveChat, setMessages, setUsers, setGroups, setRecentMessages, toast } = useChatStore();
-    const { sendMessage } = useWebSocket();
+    const { sendMessage, sendTyping } = useWebSocket();
 
     useEffect(() => {
         if (!currentUser) return;
@@ -61,7 +61,7 @@ const HomePage = () => {
                 </div>
 
                 <div className={`${activeChat ? 'flex' : 'hidden md:flex'} flex-1 h-full bg-[#0a0e11]/30 backdrop-blur-3xl relative z-10`}>
-                    <ChatWindow onSendMessage={sendMessage} onBack={() => setActiveChat(null)} />
+                    <ChatWindow onSendMessage={sendMessage} onSendTyping={sendTyping} onBack={() => setActiveChat(null)} />
                 </div>
 
                 {toast && (

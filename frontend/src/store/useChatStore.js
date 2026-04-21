@@ -13,7 +13,24 @@ const useChatStore = create((set, get) => ({
     groups: [],
     recentMessages: [],
     unreadCounts: {},
+    typingUsers: {}, // { chatId: [userIds...] }
     toast: null,
+ 
+    setTyping: (chatId, userId, isTyping) => {
+        set(state => {
+            const currentTyping = state.typingUsers[chatId] || [];
+            let newTyping;
+            if (isTyping) {
+                if (currentTyping.includes(userId)) return state;
+                newTyping = [...currentTyping, userId];
+            } else {
+                newTyping = currentTyping.filter(id => id !== userId);
+            }
+            return {
+                typingUsers: { ...state.typingUsers, [chatId]: newTyping }
+            };
+        });
+    },
 
     // ADVANCED: Centralized State Transitions
     setCurrentUser: (user) => {
