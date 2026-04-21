@@ -40,10 +40,10 @@ const MessageItem = memo(({ msg, isMine, isGroupChat }) => {
 
                     {msg.content && <p className="text-[15px] font-medium leading-relaxed tracking-tight break-words">{msg.content}</p>}
                     
-                    <div className="flex items-center justify-end space-x-2 mt-1 opacity-40">
-                        <span className="text-[9px] font-black uppercase">{time}</span>
+                    <div className="flex items-center justify-end space-x-2 mt-1 opacity-60">
+                        <span className="text-[9px] font-black uppercase tracking-tighter">{time}</span>
                         {isMine && (
-                            <div className="flex -space-x-1 text-[#25d366]">
+                            <div className={`flex -space-x-1.5 ${msg.status === 'READ' ? 'text-[#34b7f1]' : 'text-white/20'}`}>
                                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                             </div>
@@ -55,13 +55,23 @@ const MessageItem = memo(({ msg, isMine, isGroupChat }) => {
     );
 });
 
-export default function ChatWindow({ onSendMessage, onSendTyping, onBack }) {
+export default function ChatWindow({ onSendMessage, onSendTyping, onSendReadReceipt, onBack }) {
     const { currentUser, activeChat, messages, typingUsers } = useChatStore();
     const [inputMessage, setInputMessage] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
+
+    // Read Receipt Logic
+    useEffect(() => {
+        if (activeChat && !activeChat.isGroup && messages.length > 0) {
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage.senderId !== currentUser.username) {
+                onSendReadReceipt?.(activeChat.username);
+            }
+        }
+    }, [activeChat, messages.length, currentUser.username, onSendReadReceipt]);
 
     // Typing Signal Logic
     useEffect(() => {

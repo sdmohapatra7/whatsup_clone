@@ -9,7 +9,7 @@ import useChatStore from '../store/useChatStore';
  * and Optimistic Synchronization logic.
  */
 export default function useWebSocket() {
-    const { currentUser, activeChat, addMessageOptimistically, setMessages, unreadCounts, setUnreadCount, setRecentMessages, setTyping } = useChatStore();
+    const { currentUser, activeChat, addMessageOptimistically, setMessages, unreadCounts, setUnreadCount, setRecentMessages, setTyping, updateMessageStatus } = useChatStore();
     const stompClient = useRef(null);
     const typingSubscriptions = useRef({}); // { chatId: subscription }
 
@@ -35,6 +35,12 @@ export default function useWebSocket() {
                 client.subscribe(`/user/${currentUser.username}/queue/typing`, (msg) => {
                     const data = JSON.parse(msg.body);
                     setTyping(data.userId, data.userId, data.isTyping);
+                });
+
+                // 4. Subscribe to Status (Seen/Read)
+                client.subscribe(`/user/${currentUser.username}/queue/status`, (msg) => {
+                    const data = JSON.parse(msg.body);
+                    updateMessageStatus(data.partnerId, data.status);
                 });
             }
         });
@@ -123,5 +129,17 @@ export default function useWebSocket() {
         }
     };
 
-    return { sendMessage, sendTyping };
+    const sendReadReceipt = (partnerId) => {
+        if (stompClient.current?.connected && partnerId) {
+            stompClient.current.publish({
+                destination: '/app/chat/read',
+                body: JSON.stringify({
+                    senderId: partnerId,
+                    recipientId: currentUser.username
+                })
+            });
+        }
+    };
+
+    return { sendMessage, sendTyping, sendReadReceipt };
 }

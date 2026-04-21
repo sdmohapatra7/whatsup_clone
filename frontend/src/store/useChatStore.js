@@ -74,6 +74,16 @@ const useChatStore = create((set, get) => ({
     setUnreadCount: (id, count) => set(state => ({
         unreadCounts: { ...state.unreadCounts, [id]: count }
     })),
+ 
+    updateMessageStatus: (partnerId, status) => {
+        set(state => ({
+            messages: state.messages.map(msg => 
+                msg.senderId === state.currentUser?.username && msg.recipientId === partnerId
+                ? { ...msg, status }
+                : msg
+            )
+        }));
+    },
 
     // Advanced Notification Management
     showToast: (message, type = 'success') => {
