@@ -35,7 +35,7 @@ const AuthPage = () => {
                 setStep(2);
             } else if (step === 2) {
                 // STEP 2: Phone Request
-                await api.post('/users/request-otp', { phoneNumber });
+                await api.post('/users/request-otp', { phoneNumber, userId: tempUserId });
                 setStep(3);
             } else if (step === 3) {
                 // STEP 3: OTP Verification

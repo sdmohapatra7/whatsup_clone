@@ -25,12 +25,14 @@ public class UserController {
     private final OtpRepository otpRepository;
     private final JwtTokenProvider tokenProvider;
     private final SimpMessageSendingOperations messagingTemplate;
+    private final com.whatsapp.clone.service.EmailService emailService;
 
-    public UserController(UserRepository userRepository, OtpRepository otpRepository, JwtTokenProvider tokenProvider, SimpMessageSendingOperations messagingTemplate) {
+    public UserController(UserRepository userRepository, OtpRepository otpRepository, JwtTokenProvider tokenProvider, SimpMessageSendingOperations messagingTemplate, com.whatsapp.clone.service.EmailService emailService) {
         this.userRepository = userRepository;
         this.otpRepository = otpRepository;
         this.tokenProvider = tokenProvider;
         this.messagingTemplate = messagingTemplate;
+        this.emailService = emailService;
     }
 
     /**
@@ -91,6 +93,8 @@ public class UserController {
     @PostMapping("/request-otp")
     public ResponseEntity<?> requestOtp(@RequestBody Map<String, String> request) {
         String phoneNumber = request.get("phoneNumber");
+        String userId = request.get("userId");
+
         if (phoneNumber == null || phoneNumber.isEmpty()) {
             return ResponseEntity.badRequest().body("Phone number is required");
         }
@@ -100,6 +104,15 @@ public class UserController {
         System.out.println("==================================================");
         System.out.println("SECURE OTP for " + phoneNumber + " is: " + otpCode);
         System.out.println("==================================================");
+
+        // SEND EMAIL if userId provided
+        if (userId != null) {
+            userRepository.findById(userId).ifPresent(user -> {
+                if (user.getEmail() != null) {
+                    emailService.sendOtpEmail(user.getEmail(), otpCode);
+                }
+            });
+        }
 
         otpRepository.deleteByPhoneNumber(phoneNumber);
         Otp otp = Otp.builder()
