@@ -185,7 +185,22 @@ export default function ChatWindow({ onSendMessage, onBack }) {
                 </div>
             </div>
             
-            {showEmojiPicker && <div className="absolute bottom-32 left-10 z-50 animate-entrance shadow-[0_50px_100px_rgba(0,0,0,0.9)] rounded-[32px] overflow-hidden border border-white/10"><EmojiPicker theme="dark" onEmojiClick={(e) => setInputMessage(p => p + e.emoji)} /></div>}
+            {showEmojiPicker && (
+                <div className="fixed inset-0 md:absolute md:inset-auto md:bottom-32 md:left-10 z-50 flex items-center justify-center md:block p-4 md:p-0">
+                    <div className="md:fixed inset-0 md:hidden bg-black/40 backdrop-blur-sm" onClick={() => setShowEmojiPicker(false)}></div>
+                    <div className="relative z-10 w-full max-w-[350px] md:max-w-none animate-entrance shadow-[0_50px_100px_rgba(0,0,0,0.9)] rounded-[32px] overflow-hidden border border-white/10 bg-[#111b21]">
+                        <EmojiPicker 
+                            theme="dark" 
+                            width="100%"
+                            height={400}
+                            onEmojiClick={(e) => {
+                                setInputMessage(p => p + e.emoji);
+                                if (window.innerWidth < 768) setShowEmojiPicker(false);
+                            }} 
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

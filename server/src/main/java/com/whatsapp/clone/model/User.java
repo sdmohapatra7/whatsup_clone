@@ -13,6 +13,7 @@ public class User {
     private String phoneNumber;
     private String email;
     private String fullName;
+    private String password;
     private String profileImageUrl;
     private Status status;
     private boolean twoStepEnabled;
@@ -20,12 +21,13 @@ public class User {
 
     public User() {}
 
-    public User(String id, String username, String phoneNumber, String email, String fullName, String profileImageUrl, Status status, boolean twoStepEnabled, String twoStepPin) {
+    public User(String id, String username, String phoneNumber, String email, String fullName, String password, String profileImageUrl, Status status, boolean twoStepEnabled, String twoStepPin) {
         this.id = id;
         this.username = username;
         this.phoneNumber = phoneNumber;
         this.email = email;
         this.fullName = fullName;
+        this.password = password;
         this.profileImageUrl = profileImageUrl;
         this.status = status;
         this.twoStepEnabled = twoStepEnabled;
@@ -46,6 +48,8 @@ public class User {
     public void setEmail(String email) { this.email = email; }
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
     public String getProfileImageUrl() { return profileImageUrl; }
     public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
     public Status getStatus() { return status; }
@@ -61,6 +65,7 @@ public class User {
         private String phoneNumber;
         private String email;
         private String fullName;
+        private String password;
         private String profileImageUrl;
         private Status status;
         private boolean twoStepEnabled;
@@ -71,13 +76,14 @@ public class User {
         public UserBuilder phoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; return this; }
         public UserBuilder email(String email) { this.email = email; return this; }
         public UserBuilder fullName(String fullName) { this.fullName = fullName; return this; }
+        public UserBuilder password(String password) { this.password = password; return this; }
         public UserBuilder profileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; return this; }
         public UserBuilder status(Status status) { this.status = status; return this; }
         public UserBuilder twoStepEnabled(boolean twoStepEnabled) { this.twoStepEnabled = twoStepEnabled; return this; }
         public UserBuilder twoStepPin(String twoStepPin) { this.twoStepPin = twoStepPin; return this; }
 
         public User build() {
-            return new User(id, username, phoneNumber, email, fullName, profileImageUrl, status, twoStepEnabled, twoStepPin);
+            return new User(id, username, phoneNumber, email, fullName, password, profileImageUrl, status, twoStepEnabled, twoStepPin);
         }
     }
 

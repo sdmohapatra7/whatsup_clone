@@ -4,17 +4,18 @@ import com.whatsapp.clone.model.Otp;
 import com.whatsapp.clone.model.Status;
 import com.whatsapp.clone.model.User;
 import com.whatsapp.clone.repository.UserRepository;
+import com.whatsapp.clone.repository.OtpRepository;
+import com.whatsapp.clone.security.JwtTokenProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import com.whatsapp.clone.repository.OtpRepository;
-import com.whatsapp.clone.security.JwtTokenProvider;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/users")
@@ -32,6 +33,61 @@ public class UserController {
         this.messagingTemplate = messagingTemplate;
     }
 
+    /**
+     * STEP 1: Traditional Credential Registration / Login
+     */
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody User user) {
+        if (userRepository.findFirstByEmail(user.getEmail()).isPresent()) {
+            return ResponseEntity.badRequest().body("Email already registered");
+        }
+        user.setUsername(user.getEmail()); // Use email as primary username
+        user.setStatus(Status.OFFLINE);
+        User saved = userRepository.save(user);
+        return ResponseEntity.ok(saved);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String password = request.get("password");
+        String fullName = request.get("fullName");
+
+        Optional<User> userOpt = userRepository.findFirstByEmail(email);
+        
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            // Existing user: check password
+            if (password != null && user.getPassword() != null && user.getPassword().equals(password)) {
+                return ResponseEntity.ok(Map.of(
+                    "status", "STEP_1_SUCCESS",
+                    "message", "Welcome back! Credentials verified.",
+                    "userId", user.getId()
+                ));
+            }
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials for existing account.");
+        } else {
+            // New user: Create account
+            User newUser = User.builder()
+                    .email(email)
+                    .password(password)
+                    .username(email)
+                    .fullName(fullName != null && !fullName.isEmpty() ? fullName : email.split("@")[0])
+                    .status(Status.OFFLINE)
+                    .build();
+            
+            User saved = userRepository.save(newUser);
+            return ResponseEntity.ok(Map.of(
+                "status", "STEP_1_SUCCESS",
+                "message", "Account created successfully. Continuing to verification.",
+                "userId", saved.getId()
+            ));
+        }
+    }
+
+    /**
+     * STEP 2: Phone Verification via OTP
+     */
     @PostMapping("/request-otp")
     public ResponseEntity<?> requestOtp(@RequestBody Map<String, String> request) {
         String phoneNumber = request.get("phoneNumber");
@@ -39,145 +95,64 @@ public class UserController {
             return ResponseEntity.badRequest().body("Phone number is required");
         }
 
-        // Generate a simple 6-digit OTP
-        String otpCode = String.format("%06d", new java.util.Random().nextInt(999999));
-
-        // Print it to the console (simulating SMS)
+        String otpCode = String.format("%06d", new Random().nextInt(999999));
+        
         System.out.println("==================================================");
-        System.out.println("OTP for " + phoneNumber + " is: " + otpCode);
+        System.out.println("SECURE OTP for " + phoneNumber + " is: " + otpCode);
         System.out.println("==================================================");
 
-        // Delete old OTP for this phone if exists
         otpRepository.deleteByPhoneNumber(phoneNumber);
-
         Otp otp = Otp.builder()
                 .phoneNumber(phoneNumber)
                 .otpCode(otpCode)
-                .expirationTime(java.time.LocalDateTime.now().plusMinutes(5))
+                .expirationTime(LocalDateTime.now().plusMinutes(5))
                 .build();
 
         otpRepository.save(otp);
-        return ResponseEntity.ok().body("OTP sent successfully");
+        return ResponseEntity.ok().body("OTP signal generated and sent.");
     }
 
     @PostMapping("/verify-otp")
     public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> request) {
         String phoneNumber = request.get("phoneNumber");
         String otpCode = request.get("otpCode");
+        String userId = request.get("userId"); // Optional link to Step 1 user
 
         Optional<Otp> otpOpt = otpRepository.findFirstByPhoneNumber(phoneNumber);
         if (otpOpt.isPresent() && otpOpt.get().getOtpCode().equals(otpCode)) {
-            // Check expiration
-            if (otpOpt.get().getExpirationTime().isBefore(java.time.LocalDateTime.now())) {
+            if (otpOpt.get().getExpirationTime().isBefore(LocalDateTime.now())) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("OTP expired");
             }
 
-            // OTP is valid. Clean it up.
             otpRepository.deleteByPhoneNumber(phoneNumber);
 
-            // Fetch existing user or create a new one
-            User user = userRepository.findFirstByPhoneNumber(phoneNumber).orElseGet(() -> {
-                User newUser = User.builder()
-                        .phoneNumber(phoneNumber)
-                        .username(phoneNumber)
-                        .fullName("New User")
-                        .status(Status.ONLINE)
-                        .twoStepEnabled(false)
-                        .build();
-                return userRepository.save(newUser);
-            });
-
-            if (user.isTwoStepEnabled()) {
-                // If 2FA is enabled, don't log them in fully yet.
-                // Return a special payload indicating they need to provide the PIN.
-                return ResponseEntity.status(HttpStatus.ACCEPTED)
-                        .body(Map.of(
-                                "userId", user.getId(),
-                                "requiresTwoStep", true));
+            User user;
+            if (userId != null) {
+                // Link OTP to the user from Step 1
+                user = userRepository.findById(userId).get();
+                user.setPhoneNumber(phoneNumber);
+                userRepository.save(user);
+            } else {
+                // Legacy OTP-only login or guest
+                user = userRepository.findFirstByPhoneNumber(phoneNumber).orElseGet(() -> {
+                    User newUser = User.builder()
+                            .phoneNumber(phoneNumber)
+                            .username(phoneNumber)
+                            .fullName("Authenticated Node")
+                            .status(Status.ONLINE)
+                            .build();
+                    return userRepository.save(newUser);
+                });
             }
 
             user.setStatus(Status.ONLINE);
             userRepository.save(user);
 
             String token = tokenProvider.generateToken(user.getId());
-            return ResponseEntity.ok(Map.of(
-                    "user", user,
-                    "token", token
-            ));
+            return ResponseEntity.ok(Map.of("user", user, "token", token));
         }
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid OTP");
-    }
-
-    @PostMapping("/verify-two-step")
-    public ResponseEntity<?> verifyTwoStep(@RequestBody Map<String, String> request) {
-        String userId = request.get("userId");
-        String pin = request.get("pin");
-
-        Optional<User> userOpt = userRepository.findById(userId);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            if (user.isTwoStepEnabled() && user.getTwoStepPin().equals(pin)) {
-                user.setStatus(Status.ONLINE);
-                userRepository.save(user);
-                
-                String token = tokenProvider.generateToken(user.getId());
-                return ResponseEntity.ok(Map.of(
-                        "user", user,
-                        "token", token
-                ));
-            }
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid PIN");
-    }
-
-    @PostMapping("/{id}/two-step")
-    public ResponseEntity<?> enableTwoStep(@PathVariable("id") String id, @RequestBody Map<String, String> request) {
-        String pin = request.get("pin");
-        if (pin == null || pin.length() != 6) {
-            return ResponseEntity.badRequest().body("PIN must be exactly 6 digits");
-        }
-
-        Optional<User> userOpt = userRepository.findById(id);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            user.setTwoStepEnabled(true);
-            user.setTwoStepPin(pin);
-            User savedUser = userRepository.save(user);
-            return ResponseEntity.ok(savedUser);
-        }
-        return ResponseEntity.notFound().build();
-    }
-
-    @DeleteMapping("/{id}/two-step")
-    public ResponseEntity<?> disableTwoStep(@PathVariable("id") String id) {
-        Optional<User> userOpt = userRepository.findById(id);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            user.setTwoStepEnabled(false);
-            user.setTwoStepPin(null);
-            User savedUser = userRepository.save(user);
-            return ResponseEntity.ok(savedUser);
-        }
-        return ResponseEntity.notFound().build();
-    }
-
-    @PutMapping("/{id}/profile")
-    public ResponseEntity<?> updateProfile(@PathVariable("id") String id, @RequestBody User profileUpdates) {
-        Optional<User> userOpt = userRepository.findById(id);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            if (profileUpdates.getFullName() != null)
-                user.setFullName(profileUpdates.getFullName());
-            if (profileUpdates.getEmail() != null)
-                user.setEmail(profileUpdates.getEmail());
-            if (profileUpdates.getProfileImageUrl() != null)
-                user.setProfileImageUrl(profileUpdates.getProfileImageUrl());
-
-            User savedUser = userRepository.save(user);
-            return ResponseEntity.ok(savedUser);
-        }
-        return ResponseEntity.notFound().build();
     }
 
     @GetMapping
@@ -187,23 +162,12 @@ public class UserController {
 
     @PostMapping("/logout/{username}")
     public ResponseEntity<?> logoutUser(@PathVariable("username") String username) {
-        // Here username is either the old username or the new phoneNumber
         Optional<User> userOpt = userRepository.findFirstByUsername(username);
-        if (userOpt.isEmpty()) {
-            userOpt = userRepository.findFirstByPhoneNumber(username);
-        }
-
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             user.setStatus(Status.OFFLINE);
             userRepository.save(user);
-
-            // Broadcast status change
-            messagingTemplate.convertAndSend("/topic/public", Map.of(
-                    "userId", user.getId(),
-                    "status", Status.OFFLINE.toString()
-            ));
-
+            messagingTemplate.convertAndSend("/topic/public", Map.of("userId", user.getId(), "status", "OFFLINE"));
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();

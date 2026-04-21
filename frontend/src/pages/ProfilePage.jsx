@@ -29,12 +29,12 @@ const ProfilePage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0e11] flex items-center justify-center p-6 relative overflow-hidden">
+        <div className="min-h-screen bg-[#0a0e11] flex flex-col items-center justify-start md:justify-center p-6 relative overflow-y-auto">
             {/* Ambient Background Glow */}
             <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#25d366]/5 rounded-full blur-[150px]"></div>
             
             <div className="w-full max-w-[550px] relative z-10 animate-entrance">
-                <div className="bg-[#111b21] rounded-[48px] p-12 border border-white/5 shadow-[0_40px_100px_rgba(0,0,0,0.7)] backdrop-blur-3xl">
+                <div className="bg-[#111b21] rounded-[32px] md:rounded-[48px] p-8 md:p-12 border border-white/5 shadow-[0_40px_100px_rgba(0,0,0,0.7)] backdrop-blur-3xl">
                     <div className="flex justify-between items-center mb-10">
                         <div className="flex flex-col">
                             <h1 className="text-3xl font-black text-gray-100 italic">User Profile</h1>

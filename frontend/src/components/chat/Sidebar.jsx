@@ -48,7 +48,7 @@ export default function Sidebar({ onLogout }) {
     return (
         <div className="w-full h-full flex flex-col bg-[#111b21] border-r border-white/5 relative z-20">
             {/* Header */}
-            <div className="h-20 flex items-center justify-between px-8 bg-[#202c33]/50 backdrop-blur-md shrink-0">
+            <div className="h-20 flex items-center justify-between px-4 md:px-8 bg-[#202c33]/50 backdrop-blur-md shrink-0">
                 <div onClick={() => navigate('/profile')} className="flex items-center space-x-4 cursor-pointer group">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#25d366] to-[#128c7e] flex items-center justify-center text-black font-black text-xl shadow-lg group-hover:scale-105 transition-transform">
                         {(currentUser.fullName || currentUser.username || 'U').charAt(0).toUpperCase()}
@@ -82,7 +82,7 @@ export default function Sidebar({ onLogout }) {
             </div>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1">
+            <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1 hide-scrollbar">
                 {filteredContent.map((item) => {
                     const id = item.isGroup ? item.id : item.username;
                     const isActive = (item.isGroup && activeChat?.id === item.id) || (!item.isGroup && activeChat?.username === item.username);
@@ -111,13 +111,15 @@ export default function Sidebar({ onLogout }) {
                     );
                 })}
             </div>
-            {/* New Group Overlay... */}
+            {/* New Group Overlay (Responsive Modal) */}
             {isCreatingGroup && (
-                <div className="absolute inset-x-8 bottom-32 p-8 bg-[#202c33] rounded-[32px] shadow-[0_40px_80px_rgba(0,0,0,0.8)] border border-white/5 z-50">
-                    <p className="text-[10px] font-black text-[#25d366] mb-6 uppercase tracking-[4px]">CONSTRUCT GROUP</p>
-                    <input autoFocus placeholder="Circle Name" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} className="w-full bg-[#111b21] border-2 border-white/5 rounded-3xl px-6 py-4 text-sm text-white outline-none mb-6 focus:border-[#25d366]/30" />
-                    <button onClick={handleCreateGroup} className="w-full bg-[#25d366] text-black font-black py-4 rounded-3xl text-sm transition-all active:scale-95 shadow-xl shadow-[#25d36633]">Establish Thread</button>
-                    <button onClick={() => setIsCreatingGroup(false)} className="w-full mt-4 text-[#8696a0] text-[10px] font-black uppercase tracking-widest py-2 hover:text-white">Discard</button>
+                <div className="fixed inset-0 md:absolute md:inset-0 z-50 flex items-center justify-center bg-black/60 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none p-6 md:p-0">
+                    <div className="w-full max-w-sm md:absolute md:inset-x-8 md:bottom-32 p-8 bg-[#202c33] rounded-[32px] shadow-[0_40px_80px_rgba(0,0,0,0.8)] border border-white/5 animate-entrance">
+                        <p className="text-[10px] font-black text-[#25d366] mb-6 uppercase tracking-[4px]">CONSTRUCT GROUP</p>
+                        <input autoFocus placeholder="Circle Name" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} className="w-full bg-[#111b21] border-2 border-white/5 rounded-3xl px-6 py-4 text-sm text-white outline-none mb-6 focus:border-[#25d366]/30" />
+                        <button onClick={handleCreateGroup} className="w-full bg-[#25d366] text-black font-black py-4 rounded-3xl text-sm transition-all active:scale-95 shadow-xl shadow-[#25d36633]">Establish Thread</button>
+                        <button onClick={() => setIsCreatingGroup(false)} className="w-full mt-4 text-[#8696a0] text-[10px] font-black uppercase tracking-widest py-2 hover:text-white">Discard</button>
+                    </div>
                 </div>
             )}
         </div>

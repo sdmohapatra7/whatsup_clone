@@ -65,7 +65,7 @@ const HomePage = () => {
                 </div>
 
                 {toast && (
-                    <div className="fixed bottom-12 right-12 z-[100] px-8 py-5 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-[#25d366]/30 bg-[#111b21] flex items-center space-x-4 animate-bounce">
+                    <div className="fixed bottom-12 inset-x-6 md:inset-auto md:right-12 z-[100] px-8 py-5 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-[#25d366]/30 bg-[#111b21] flex items-center space-x-4 animate-bounce">
                         <div className="w-8 h-8 bg-[#25d366] rounded-xl flex items-center justify-center">
                             <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                         </div>

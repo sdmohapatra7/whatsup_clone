@@ -32,7 +32,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/users/request-otp", "/api/users/verify-otp", "/api/users/verify-two-step").permitAll()
+                .requestMatchers("/api/users/login", "/api/users/register", "/api/users/request-otp", "/api/users/verify-otp", "/api/users/verify-two-step").permitAll()
                 .requestMatchers("/ws/**").permitAll() // Allow WebSocket connections
                 .requestMatchers("/uploads/**").permitAll() // Allow file access
                 .anyRequest().authenticated()
