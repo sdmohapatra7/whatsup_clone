@@ -1,26 +1,29 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 /**
  * ADVANCED HOOK: useThrottle
- * Ensures that a function is called at most once every 'interval' milliseconds.
+ * Ensures a function/value is only updated once every 'interval' milliseconds.
  * 
- * Perfect for: Window resize, Scroll events, High-frequency UI feedback.
+ * Perfect for: Scroll events, resizing, or limiting high-frequency state updates.
  */
 export function useThrottle(value, interval) {
     const [throttledValue, setThrottledValue] = useState(value);
     const lastExecuted = useRef(Date.now());
 
     useEffect(() => {
-        if (Date.now() >= lastExecuted.current + interval) {
-            lastExecuted.current = Date.now();
-            setThrottledValue(value);
-        } else {
-            const timerId = setTimeout(() => {
-                lastExecuted.current = Date.now();
-                setThrottledValue(value);
-            }, interval);
+        const now = Date.now();
+        const remainingTime = interval - (now - lastExecuted.current);
 
-            return () => clearTimeout(timerId);
+        if (remainingTime <= 0) {
+            setThrottledValue(value);
+            lastExecuted.current = now;
+        } else {
+            const handler = setTimeout(() => {
+                setThrottledValue(value);
+                lastExecuted.current = Date.now();
+            }, remainingTime);
+
+            return () => clearTimeout(handler);
         }
     }, [value, interval]);
 

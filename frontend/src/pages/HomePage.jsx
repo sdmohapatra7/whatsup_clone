@@ -56,7 +56,7 @@ const HomePage = () => {
                     <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#25d366]/3 rounded-full blur-[100px]"></div>
                 </div>
 
-                <div className={`${activeChat ? 'hidden md:flex' : 'flex'} w-full md:w-[400px] lg:w-[450px] flex-shrink-0 relative z-10`}>
+                <div className={`${activeChat ? 'hidden md:flex' : 'flex'} w-full md:w-[400px] lg:w-[450px] flex-shrink-0 relative z-10 h-full`}>
                     <Sidebar onLogout={handleLogout} />
                 </div>
 
