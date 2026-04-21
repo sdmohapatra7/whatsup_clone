@@ -38,4 +38,24 @@ public class GroupController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Group> updateGroup(@PathVariable("id") String id, @RequestBody Group groupUpdate) {
+        return groupRepository.findById(id).map(group -> {
+            if (groupUpdate.getName() != null) group.setName(groupUpdate.getName());
+            if (groupUpdate.getDescription() != null) group.setDescription(groupUpdate.getDescription());
+            if (groupUpdate.getGroupImageUrl() != null) group.setGroupImageUrl(groupUpdate.getGroupImageUrl());
+            if (groupUpdate.getMemberIds() != null) group.setMemberIds(groupUpdate.getMemberIds());
+            return ResponseEntity.ok(groupRepository.save(group));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteGroup(@PathVariable("id") String id) {
+        if (groupRepository.existsById(id)) {
+            groupRepository.deleteById(id);
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.notFound().build();
+    }
 }

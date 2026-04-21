@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useChatStore from '../../store/useChatStore';
 import { useDebounce } from '../../hooks/useDebounce';
+import { api } from '../../services/api';
 
 export default function Sidebar({ onLogout }) {
     const { currentUser, users, groups, setGroups, unreadCounts, activeChat, setActiveChat, recentMessages, showToast } = useChatStore();
@@ -30,18 +31,15 @@ export default function Sidebar({ onLogout }) {
     const handleCreateGroup = async () => {
         if (!newGroupName.trim() || selectedMembers.length === 0) return;
         try {
-            const res = await fetch('http://localhost:8082/api/groups', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('chatToken')}` },
-                body: JSON.stringify({ name: newGroupName, memberIds: [...selectedMembers, currentUser.id], adminId: currentUser.id })
+            const ng = await api.post('/groups', { 
+                name: newGroupName, 
+                memberIds: [...selectedMembers, currentUser.id], 
+                adminId: currentUser.id 
             });
-            if (res.ok) {
-                const ng = await res.json();
-                setGroups([...groups, ng]);
-                setIsCreatingGroup(false);
-                setActiveChat(ng);
-                showToast(`Group "${newGroupName}" established.`);
-            }
+            setGroups([...groups, ng]);
+            setIsCreatingGroup(false);
+            setActiveChat(ng);
+            showToast(`Group "${newGroupName}" established.`);
         } catch (e) { showToast("Critical error", "error"); }
     };
 
@@ -111,14 +109,65 @@ export default function Sidebar({ onLogout }) {
                     );
                 })}
             </div>
-            {/* New Group Overlay (Responsive Modal) */}
+            {/* New Group Overlay (Enhanced with Multi-Select) */}
             {isCreatingGroup && (
-                <div className="fixed inset-0 md:absolute md:inset-0 z-50 flex items-center justify-center bg-black/60 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none p-6 md:p-0">
-                    <div className="w-full max-w-sm md:absolute md:inset-x-8 md:bottom-32 p-8 bg-[#202c33] rounded-[32px] shadow-[0_40px_80px_rgba(0,0,0,0.8)] border border-white/5 animate-entrance">
-                        <p className="text-[10px] font-black text-[#25d366] mb-6 uppercase tracking-[4px]">CONSTRUCT GROUP</p>
-                        <input autoFocus placeholder="Circle Name" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} className="w-full bg-[#111b21] border-2 border-white/5 rounded-3xl px-6 py-4 text-sm text-white outline-none mb-6 focus:border-[#25d366]/30" />
-                        <button onClick={handleCreateGroup} className="w-full bg-[#25d366] text-black font-black py-4 rounded-3xl text-sm transition-all active:scale-95 shadow-xl shadow-[#25d36633]">Establish Thread</button>
-                        <button onClick={() => setIsCreatingGroup(false)} className="w-full mt-4 text-[#8696a0] text-[10px] font-black uppercase tracking-widest py-2 hover:text-white">Discard</button>
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+                    <div className="w-full max-w-md bg-[#202c33] rounded-[40px] p-8 md:p-10 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] animate-entrance max-h-[90vh] flex flex-col">
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-2xl font-black text-gray-100 italic">Initialize Circle</h2>
+                            <button onClick={() => setIsCreatingGroup(false)} className="text-[#8696a0] hover:text-white transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="space-y-6 flex-1 overflow-hidden flex flex-col">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-[#25d366] uppercase tracking-[4px] ml-4">Circle Identity</label>
+                                <input 
+                                    autoFocus 
+                                    placeholder="Group Name" 
+                                    value={newGroupName} 
+                                    onChange={e => setNewGroupName(e.target.value)} 
+                                    className="w-full bg-[#111b21] border-2 border-white/5 rounded-3xl px-6 py-4 text-white font-bold outline-none focus:border-[#25d366]/30" 
+                                />
+                            </div>
+
+                            <div className="flex-1 flex flex-col overflow-hidden">
+                                <label className="text-[10px] font-black text-white/30 uppercase tracking-[4px] ml-4 mb-4">Select Mesh Members</label>
+                                <div className="flex-1 overflow-y-auto pr-2 space-y-2 hide-scrollbar">
+                                    {otherUsers.map(user => {
+                                        const isSelected = selectedMembers.includes(user.id);
+                                        return (
+                                            <div 
+                                                key={user.id} 
+                                                onClick={() => {
+                                                    setSelectedMembers(prev => isSelected ? prev.filter(id => id !== user.id) : [...prev, user.id]);
+                                                }}
+                                                className={`flex items-center p-4 rounded-2xl cursor-pointer border-2 transition-all ${isSelected ? 'bg-[#25d366]/10 border-[#25d366] shadow-[0_0_15px_rgba(37,211,102,0.1)]' : 'bg-black/20 border-transparent hover:bg-white/5'}`}
+                                            >
+                                                <div className="w-10 h-10 rounded-xl bg-[#374045] flex items-center justify-center text-white font-black text-sm mr-4">
+                                                    {(user.fullName || user.username).charAt(0).toUpperCase()}
+                                                </div>
+                                                <span className="flex-1 text-sm font-bold text-gray-200">{user.fullName || user.username}</span>
+                                                {isSelected && (
+                                                    <div className="w-6 h-6 bg-[#25d366] rounded-full flex items-center justify-center shadow-[0_0_10px_#25d366]">
+                                                        <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        <button 
+                            disabled={!newGroupName.trim() || selectedMembers.length === 0}
+                            onClick={handleCreateGroup} 
+                            className="w-full bg-[#25d366] text-black font-black py-5 rounded-3xl mt-8 uppercase tracking-[3px] shadow-2xl shadow-[#25d36633] active:scale-95 transition-all disabled:opacity-30"
+                        >
+                            Establish Circle
+                        </button>
                     </div>
                 </div>
             )}

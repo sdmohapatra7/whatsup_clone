@@ -69,6 +69,14 @@ const useChatStore = create((set, get) => ({
 
     setUsers: (users) => set({ users }),
     setGroups: (groups) => set({ groups }),
+    updateGroup: (updatedGroup) => set(state => ({
+        groups: state.groups.map(g => g.id === updatedGroup.id ? updatedGroup : g),
+        activeChat: (state.activeChat?.isGroup && state.activeChat.id === updatedGroup.id) ? updatedGroup : state.activeChat
+    })),
+    deleteGroup: (groupId) => set(state => ({
+        groups: state.groups.filter(g => g.id !== groupId),
+        activeChat: (state.activeChat?.isGroup && state.activeChat.id === groupId) ? null : state.activeChat
+    })),
     setRecentMessages: (recentMessages) => set({ recentMessages }),
     
     setUnreadCount: (id, count) => set(state => ({

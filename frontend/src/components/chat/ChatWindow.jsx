@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, memo, useCallback, useMemo } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import useChatStore from '../../store/useChatStore';
+import { api } from '../../services/api';
 
 // Optimized Message Component with Memoization
 const MessageItem = memo(({ msg, isMine, isGroupChat }) => {
@@ -56,12 +57,64 @@ const MessageItem = memo(({ msg, isMine, isGroupChat }) => {
 });
 
 export default function ChatWindow({ onSendMessage, onSendTyping, onSendReadReceipt, onBack }) {
-    const { currentUser, activeChat, messages, typingUsers } = useChatStore();
+    const { currentUser, activeChat, messages, typingUsers, updateGroup, deleteGroup, showToast } = useChatStore();
     const [inputMessage, setInputMessage] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+    const [editName, setEditName] = useState(activeChat?.name || '');
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
+    const groupImgRef = useRef(null);
+
+    // Sync editName when activeChat changes
+    useEffect(() => {
+        if (activeChat?.isGroup) setEditName(activeChat.name);
+    }, [activeChat]);
+
+    const handleUpdateGroup = async () => {
+        if (!editName.trim()) return;
+        try {
+            const updated = await api.post(`/groups/${activeChat.id}`, { name: editName }, 'PUT');
+            updateGroup(updated);
+            setShowSettings(false);
+            showToast("Group designation updated.");
+        } catch (e) { showToast("Sync failed", "error"); }
+    };
+
+    const handleDeleteGroup = async () => {
+        if (!window.confirm("Dissolve this group permanently?")) return;
+        try {
+            await api.post(`/groups/${activeChat.id}`, {}, 'DELETE');
+            deleteGroup(activeChat.id);
+            setShowSettings(false);
+            showToast("Group dissolved.");
+        } catch (e) { showToast("Deletion failed", "error"); }
+    };
+
+    const handleGroupImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'profile-image');
+
+        try {
+            const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082/api';
+            const res = await fetch(`${BASE_URL}/files/upload`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('chatToken')}` },
+                body: formData
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const updated = await api.post(`/groups/${activeChat.id}`, { groupImageUrl: data.url }, 'PUT');
+                updateGroup(updated);
+                showToast("Group visual protocol synchronized.");
+            }
+        } catch (err) { showToast("Upload failed", "error"); }
+    };
 
     // Read Receipt Logic
     useEffect(() => {
@@ -123,7 +176,9 @@ export default function ChatWindow({ onSendMessage, onSendTyping, onSendReadRece
         formData.append('type', type);
 
         try {
-            const res = await fetch('http://localhost:8082/api/files/upload', {
+            // Using raw fetch for FormData remains okay, but we use BASE_URL logic
+            const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082/api';
+            const res = await fetch(`${BASE_URL}/files/upload`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('chatToken')}` },
                 body: formData
@@ -160,7 +215,9 @@ export default function ChatWindow({ onSendMessage, onSendTyping, onSendReadRece
                 <div className="flex items-center space-x-5">
                     <button onClick={onBack} className="md:hidden text-[#25d366] p-2 -ml-3 hover:bg-white/5 rounded-xl transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg></button>
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#25d366] to-[#128c7e] flex items-center justify-center text-black font-black text-xl shadow-lg border border-white/5">
-                        {(activeChat.name || activeChat.fullName || activeChat.phoneNumber || 'U').charAt(0).toUpperCase()}
+                        {activeChat.groupImageUrl || activeChat.profileImageUrl ? (
+                            <img src={activeChat.groupImageUrl || activeChat.profileImageUrl} alt="" className="w-full h-full object-cover rounded-2xl" />
+                        ) : (activeChat.name || activeChat.fullName || activeChat.phoneNumber || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col">
                         <h2 className="font-black text-gray-100 text-[15px] leading-tight tracking-tight truncate">{activeChat.name || activeChat.fullName || activeChat.phoneNumber}</h2>
@@ -185,6 +242,11 @@ export default function ChatWindow({ onSendMessage, onSendTyping, onSendReadRece
                         </div>
                     </div>
                 </div>
+                {activeChat.isGroup && (
+                    <button onClick={() => setShowSettings(true)} className="p-3 text-[#8696a0] hover:text-[#25d366] transition-all bg-white/5 rounded-2xl">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                    </button>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 md:px-12 py-10 space-y-8 z-10 scroll-smooth">
@@ -245,6 +307,47 @@ export default function ChatWindow({ onSendMessage, onSendTyping, onSendReadRece
                                 if (window.innerWidth < 768) setShowEmojiPicker(false);
                             }} 
                         />
+                    </div>
+                </div>
+            )}
+
+            {/* ADVANCED: Group Settings Overlay */}
+            {showSettings && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+                    <div className="w-full max-w-xl bg-[#111b21] rounded-[48px] p-10 border border-white/10 shadow-[0_40px_120px_rgba(0,0,0,0.9)] animate-entrance overflow-y-auto max-h-[90vh]">
+                        <div className="flex justify-between items-center mb-10">
+                            <h2 className="text-3xl font-black text-gray-100 italic">Group Protocol</h2>
+                            <button onClick={() => setShowSettings(false)} className="p-4 bg-white/5 rounded-2x hover:text-white transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg></button>
+                        </div>
+
+                        <div className="flex flex-col items-center mb-12">
+                            <div className="relative group cursor-pointer" onClick={() => groupImgRef.current?.click()}>
+                                <div className="w-32 h-32 rounded-[42px] bg-gradient-to-br from-[#25d366] to-[#128c7e] overflow-hidden flex items-center justify-center shadow-2xl">
+                                    {activeChat.groupImageUrl ? <img src={activeChat.groupImageUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-4xl font-black text-[#111b21]">{activeChat.name.charAt(0).toUpperCase()}</span>}
+                                </div>
+                                <input type="file" hidden ref={groupImgRef} onChange={handleGroupImageUpload} accept="image/*" />
+                                <div className="absolute inset-0 bg-black/40 rounded-[42px] opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                </div>
+                            </div>
+                            <p className="mt-4 text-[10px] font-black text-[#25d366] uppercase tracking-[4px]">Administrator Access Active</p>
+                        </div>
+
+                        <div className="space-y-8">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-white/30 uppercase tracking-[3px] ml-4">Circle Designation</label>
+                                <input 
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="w-full bg-black/40 border-2 border-white/5 rounded-3xl px-8 py-5 text-white font-bold text-lg focus:border-[#25d366]/30 outline-none transition-all"
+                                />
+                            </div>
+
+                            <div className="flex space-x-4">
+                                <button onClick={handleUpdateGroup} className="flex-1 bg-[#25d366] text-[#111b21] py-5 rounded-[28px] font-black text-sm uppercase tracking-widest shadow-xl shadow-[#25d36622] hover:scale-[1.02] active:scale-95 transition-all">Commit Changes</button>
+                                <button onClick={handleDeleteGroup} className="flex-1 bg-red-500/10 text-red-500 border border-red-500/20 py-5 rounded-[28px] font-black text-sm uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">Dissolve Group</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
