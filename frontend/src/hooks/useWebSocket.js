@@ -16,7 +16,8 @@ export default function useWebSocket() {
     const connect = useCallback(() => {
         if (!currentUser) return;
 
-        const socket = new SockJS('http://localhost:8082/ws');
+        const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:8082/ws';
+        const socket = new SockJS(WS_URL);
         const client = new Client({
             webSocketFactory: () => socket,
             reconnectDelay: 5000,

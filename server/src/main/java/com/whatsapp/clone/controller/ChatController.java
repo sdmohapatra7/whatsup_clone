@@ -72,6 +72,8 @@ public class ChatController {
                             "status", "READ"
                     ));
         }
+    }
+
     @MessageMapping("/chat/typing")
     public void processTyping(@Payload Map<String, String> payload) {
         String senderId = payload.get("senderId");
