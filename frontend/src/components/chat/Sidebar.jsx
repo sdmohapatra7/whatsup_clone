@@ -48,8 +48,10 @@ export default function Sidebar({ onLogout }) {
             {/* Header */}
             <div className="h-20 flex items-center justify-between px-4 md:px-8 bg-[#202c33]/50 backdrop-blur-md shrink-0">
                 <div onClick={() => navigate('/profile')} className="flex items-center space-x-4 cursor-pointer group">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#25d366] to-[#128c7e] flex items-center justify-center text-black font-black text-xl shadow-lg group-hover:scale-105 transition-transform">
-                        {(currentUser.fullName || currentUser.username || 'U').charAt(0).toUpperCase()}
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#25d366] to-[#128c7e] flex items-center justify-center text-black font-black text-xl shadow-lg group-hover:scale-105 transition-transform overflow-hidden">
+                        {currentUser.profileImageUrl ? (
+                            <img src={currentUser.profileImageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (currentUser.fullName || currentUser.username || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col">
                         <span className="font-black text-gray-100 text-sm tracking-tight group-hover:text-[#25d366] transition-colors">{currentUser.fullName || 'Standard User'}</span>
@@ -90,8 +92,10 @@ export default function Sidebar({ onLogout }) {
                         <div key={id} onClick={() => setActiveChat(item)} className={`px-5 py-5 flex items-center cursor-pointer rounded-[24px] border-l-4 transition-all ${isActive ? 'bg-[#2a3942] border-[#25d366] shadow-xl' : 'hover:bg-[#202c33]/50 border-transparent shadow-none'}`}>
                             {/* Avatar and Info... */}
                             <div className="relative shrink-0">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg border border-white/10 ${item.isGroup ? 'bg-gradient-to-br from-[#25d366] to-[#128c7e] text-black' : 'bg-[#374045]'}`}>
-                                    {item.profileImageUrl || item.groupImageUrl ? <img src={item.profileImageUrl || item.groupImageUrl} alt="" className="w-full h-full object-cover rounded-2xl" /> : (item.name || item.fullName || item.phoneNumber || '?').charAt(0).toUpperCase()}
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg border border-white/10 overflow-hidden ${item.isGroup ? 'bg-gradient-to-br from-[#25d366] to-[#128c7e] text-black' : 'bg-[#374045]'}`}>
+                                    {item.groupImageUrl || item.profileImageUrl ? (
+                                        <img src={item.groupImageUrl || item.profileImageUrl} alt="" className="w-full h-full object-cover" />
+                                    ) : (item.name || item.fullName || item.phoneNumber || '?').charAt(0).toUpperCase()}
                                 </div>
                                 {!item.isGroup && item.status === 'ONLINE' && <span className="absolute bottom-[-2px] right-[-2px] w-4 h-4 bg-[#25d366] border-[3px] border-[#111b21] rounded-full shadow-[0_0_8px_#25d366]"></span>}
                             </div>
@@ -145,8 +149,10 @@ export default function Sidebar({ onLogout }) {
                                                 }}
                                                 className={`flex items-center p-4 rounded-2xl cursor-pointer border-2 transition-all ${isSelected ? 'bg-[#25d366]/10 border-[#25d366] shadow-[0_0_15px_rgba(37,211,102,0.1)]' : 'bg-black/20 border-transparent hover:bg-white/5'}`}
                                             >
-                                                <div className="w-10 h-10 rounded-xl bg-[#374045] flex items-center justify-center text-white font-black text-sm mr-4">
-                                                    {(user.fullName || user.username).charAt(0).toUpperCase()}
+                                                <div className="w-10 h-10 rounded-xl bg-[#374045] flex items-center justify-center text-white font-black text-sm mr-4 overflow-hidden">
+                                                    {user.profileImageUrl ? (
+                                                        <img src={user.profileImageUrl} alt="" className="w-full h-full object-cover" />
+                                                    ) : (user.fullName || user.username).charAt(0).toUpperCase()}
                                                 </div>
                                                 <span className="flex-1 text-sm font-bold text-gray-200">{user.fullName || user.username}</span>
                                                 {isSelected && (
